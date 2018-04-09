@@ -2,11 +2,11 @@
 extern crate stdweb;
 #[macro_use]
 extern crate yew;
-extern crate yew_router;
+extern crate yew_route;
 
 use yew::prelude::*;
 use yew::services::console::ConsoleService;
-use yew_router::{RouterTask, RouteInfo};
+use yew_route::{RouterTask, RouteInfo};
 
 use stdweb::web::Date;
 
