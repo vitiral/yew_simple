@@ -1,52 +1,48 @@
 //! This module contains the implementation of a service for
 //! a url router.
 
-#[macro_use] extern crate yew;
+extern crate yew;
 #[macro_use] extern crate stdweb;
+pub extern crate url;
 
+pub use url::Url;
 
-mod window;
-
-use std::rc::Rc;
-
-use yew::html::{Callback, Component, Env};
-use yew::services::Task;
+use yew::html::{Component, Env};
 use stdweb::Value;
 use stdweb::web::{self, IEventTarget};
-
-use window::{get_location, parse_location};
-pub use window::Location;
-
 
 /// TODO:
 /// A handle which helps to cancel the router. Uses removeEventListener
 pub struct RouterTask<CTX: 'static, COMP: Component<CTX>> {
-    handle1: web::EventListenerHandle,
+    _handle1: web::EventListenerHandle,
     handle2: Value,
     history: web::History,
     route_fn: &'static Fn(RouteInfo) -> COMP::Msg,
-    window: web::Window,
 }
 
 /// State of the current route.
 #[derive(Debug, Clone)]
 pub struct RouteInfo {
-    /// Window location
-    pub location: Location,
+    /// Url
+    pub url: Url,
     /// History state
     pub state: Value,
 }
 
 impl RouteInfo {
     /// Initialize the route state using the current window.
-    fn new(state: Value) -> RouteInfo {
-        let window = web::window();
-        let location = get_location(&window);
+    fn new(url: Url, state: Value) -> RouteInfo {
         RouteInfo {
-            location: location,
+            url: url,
             state: state,
         }
     }
+}
+
+fn current_url(window: &web::Window) -> Url {
+    // TODO: better error messages around unwraps
+    let href = window.location().unwrap().href().unwrap();
+    Url::parse(&href).unwrap()
 }
 
 impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
@@ -66,9 +62,10 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
         let callback1 = callback.clone();
         let callback2 = callback;
 
+        let cl_window = window.clone();
         let handle1 = window
             .add_event_listener(move |event: web::event::PopStateEvent| {
-                callback1.emit(RouteInfo::new(event.state()));
+                callback1.emit(RouteInfo::new(current_url(&cl_window), event.state()));
             });
 
         // TODO: koute/stdweb/issues/171
@@ -77,8 +74,9 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
         //         callback2.emit(RouteInfo::new(Value::Null));
         //     }));
 
+        let cl_window = window.clone();
         let rs_handle = move || {
-            callback2.emit(RouteInfo::new(Value::Null));
+            callback2.emit(RouteInfo::new(current_url(&cl_window), Value::Null));
         };
 
         let handle2 = js!{
@@ -94,11 +92,10 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
         };
 
         RouterTask {
-            handle1: handle1,
+            _handle1: handle1,
             handle2: handle2,
             route_fn: route_fn,
             history: window.history(),
-            window: window,
         }
     }
 
@@ -106,18 +103,13 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
     ///
     /// This will _not_ trigger the router to change. If a state change is required
     /// it is the user's job to propogate the `Msg`.
-    pub fn push_state(&self, state: Value, title: &str, url: Option<&str>) -> COMP::Msg {
-        let url = match url {
-            Some(url) => url.to_string(),
-            None => self.window.location().unwrap().href().unwrap(),
-        };
-        self.history.push_state(state.clone(), title, Some(&url));
+    pub fn push_state(&self, state: Value, title: &str, url: Url) -> COMP::Msg {
+        self.history.push_state(state.clone(), title, Some(url.as_str()));
         let info = RouteInfo {
-            location: parse_location(&url),
+            url: url,
             state: state,
         };
-        let route_fn = self.route_fn;
-        route_fn(info)
+        (*self.route_fn)(info)
     }
 }
 

@@ -83,11 +83,11 @@ impl Renderable<Context, Model> for Model {
 }
 
 fn handle_route(info: RouteInfo) -> Msg {
-    let route = info.location.hash;
+    let route = info.url.fragment().unwrap_or("");
     println!("Handling route: {}", route);
-    if route.to_ascii_lowercase() == "#increment" {
+    if route.to_ascii_lowercase() == "increment" {
         Msg::Increment
-    } else if route.to_ascii_lowercase() == "#decrement" {
+    } else if route.to_ascii_lowercase() == "decrement" {
         Msg::Decrement
     } else {
         Msg::None
