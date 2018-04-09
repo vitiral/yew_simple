@@ -1,0 +1,9 @@
+[package]
+name = "yew_router"
+version = "0.1.0"
+authors = ["Garrett Berg <googberg@gmail.com>"]
+
+[dependencies]
+url = "1.7.0"
+yew = "0.2.0"
+stdweb = "0.4.3"
