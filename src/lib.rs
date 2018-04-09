@@ -7,8 +7,9 @@
 
 mod window;
 
-use yew::html::Callback;
-use yew::html::Component;
+use std::rc::Rc;
+
+use yew::html::{Callback, Component, Env};
 use yew::services::Task;
 use stdweb::Value;
 use stdweb::web::{self, IEventTarget};
@@ -19,13 +20,14 @@ pub use window::Location;
 
 /// TODO:
 /// A handle which helps to cancel the router. Uses removeEventListener
-pub struct RouterService<CTX: 'static, COMP: Component<CTX>> {
+pub struct RouterService<CTX: 'static, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> {
     handle1: Option<web::EventListenerHandle>,
     // handle2: Option<web::EventListenerHandle>,
     handle2: Option<Value>,
     route_fn: Option<&'static Fn(RouteInfo) -> COMP::Msg>,
     window: web::Window,
     history: web::History,
+    route_fn2: Option<Rc<F>>,
 }
 
 /// State of the current route.
@@ -49,7 +51,7 @@ impl RouteInfo {
     }
 }
 
-impl<CTX: 'static, COMP: Component<CTX>> RouterService<CTX, COMP> {
+impl<CTX: 'static, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> RouterService<CTX, COMP, F> {
     /// Creates a new service instance connected to `App` by provided `sender`.
     pub fn new() -> Self {
         let window = web::window();
@@ -59,6 +61,23 @@ impl<CTX: 'static, COMP: Component<CTX>> RouterService<CTX, COMP> {
             route_fn: None,
             history: window.history(),
             window: window,
+            route_fn2: None,
+        }
+    }
+
+    pub fn create(
+        env: &mut Env<'static, CTX, COMP>,
+        route_fn: F,
+    ) -> Self
+    {
+        let window = web::window();
+        RouterService {
+            handle1: None,
+            handle2: None,
+            route_fn: None,
+            history: window.history(),
+            window: window,
+            route_fn2: Some(Rc::new(route_fn)),
         }
     }
 
@@ -129,7 +148,7 @@ impl<CTX: 'static, COMP: Component<CTX>> RouterService<CTX, COMP> {
     }
 }
 
-impl<CTX, COMP: Component<CTX>> Task for RouterService<CTX, COMP> {
+impl<CTX, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> Task for RouterService<CTX, COMP, F> {
     fn is_active(&self) -> bool {
         self.handle1.is_some()
     }
@@ -153,7 +172,7 @@ impl<CTX, COMP: Component<CTX>> Task for RouterService<CTX, COMP> {
     }
 }
 
-impl<CTX, COMP: Component<CTX>> Drop for RouterService<CTX, COMP> {
+impl<CTX, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> Drop for RouterService<CTX, COMP, F> {
     fn drop(&mut self) {
         if self.is_active() {
             self.cancel();
