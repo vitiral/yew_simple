@@ -10,9 +10,9 @@ use yew_router::{RouterService, RouteInfo};
 
 use stdweb::web::Date;
 
-struct Context<F: Fn(RouteInfo) -> Msg + 'static> {
+struct Context {
     console: ConsoleService,
-    router: RouterService<Context, Model, F>,
+    router: RouterService<Context, Model>,
 }
 
 struct Model {
