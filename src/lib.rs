@@ -20,14 +20,13 @@ pub use window::Location;
 
 /// TODO:
 /// A handle which helps to cancel the router. Uses removeEventListener
-pub struct RouterService<CTX: 'static, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg + 'static> {
+pub struct RouterService<CTX: 'static, COMP: Component<CTX>> {
     handle1: Option<web::EventListenerHandle>,
     // handle2: Option<web::EventListenerHandle>,
     handle2: Option<Value>,
     route_fn: Option<&'static Fn(RouteInfo) -> COMP::Msg>,
     window: web::Window,
     history: web::History,
-    route_fn2: Option<Rc<F>>,
 }
 
 /// State of the current route.
@@ -51,7 +50,7 @@ impl RouteInfo {
     }
 }
 
-impl<CTX: 'static, COMP: Component<CTX>, F: Copy + Fn(RouteInfo) -> COMP::Msg + 'static> RouterService<CTX, COMP, F> {
+impl<CTX: 'static, COMP: Component<CTX>> RouterService<CTX, COMP> {
     /// Creates a new service instance connected to `App` by provided `sender`.
     pub fn new() -> Self {
         let window = web::window();
@@ -61,13 +60,12 @@ impl<CTX: 'static, COMP: Component<CTX>, F: Copy + Fn(RouteInfo) -> COMP::Msg + 
             route_fn: None,
             history: window.history(),
             window: window,
-            route_fn2: None,
         }
     }
 
     pub fn create(
         env: &mut Env<'static, CTX, COMP>,
-        route_fn: F,
+        route_fn: &'static Fn(RouteInfo) -> COMP::Msg,
     ) -> Self
     {
         let window = web::window();
@@ -76,10 +74,9 @@ impl<CTX: 'static, COMP: Component<CTX>, F: Copy + Fn(RouteInfo) -> COMP::Msg + 
         RouterService {
             handle1: None,
             handle2: None,
-            route_fn: None,
+            route_fn: Some(route_fn),
             history: window.history(),
             window: window,
-            route_fn2: Some(Rc::new(route_fn)),
         }
     }
 
@@ -150,7 +147,7 @@ impl<CTX: 'static, COMP: Component<CTX>, F: Copy + Fn(RouteInfo) -> COMP::Msg + 
     }
 }
 
-impl<CTX, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> Task for RouterService<CTX, COMP, F> {
+impl<CTX, COMP: Component<CTX>> Task for RouterService<CTX, COMP> {
     fn is_active(&self) -> bool {
         self.handle1.is_some()
     }
@@ -174,7 +171,7 @@ impl<CTX, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> Task for RouterSe
     }
 }
 
-impl<CTX, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> Drop for RouterService<CTX, COMP, F> {
+impl<CTX, COMP: Component<CTX>> Drop for RouterService<CTX, COMP> {
     fn drop(&mut self) {
         if self.is_active() {
             self.cancel();
