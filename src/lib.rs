@@ -20,7 +20,7 @@ pub use window::Location;
 
 /// TODO:
 /// A handle which helps to cancel the router. Uses removeEventListener
-pub struct RouterService<CTX: 'static, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> {
+pub struct RouterService<CTX: 'static, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg + 'static> {
     handle1: Option<web::EventListenerHandle>,
     // handle2: Option<web::EventListenerHandle>,
     handle2: Option<Value>,
@@ -51,7 +51,7 @@ impl RouteInfo {
     }
 }
 
-impl<CTX: 'static, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> RouterService<CTX, COMP, F> {
+impl<CTX: 'static, COMP: Component<CTX>, F: Copy + Fn(RouteInfo) -> COMP::Msg + 'static> RouterService<CTX, COMP, F> {
     /// Creates a new service instance connected to `App` by provided `sender`.
     pub fn new() -> Self {
         let window = web::window();
@@ -71,6 +71,8 @@ impl<CTX: 'static, COMP: Component<CTX>, F: Fn(RouteInfo) -> COMP::Msg> RouterSe
     ) -> Self
     {
         let window = web::window();
+        let callback = env.send_back(route_fn);
+
         RouterService {
             handle1: None,
             handle2: None,
