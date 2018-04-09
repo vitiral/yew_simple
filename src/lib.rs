@@ -20,13 +20,12 @@ pub use window::Location;
 
 /// TODO:
 /// A handle which helps to cancel the router. Uses removeEventListener
-pub struct RouterService<CTX: 'static, COMP: Component<CTX>> {
-    handle1: Option<web::EventListenerHandle>,
-    // handle2: Option<web::EventListenerHandle>,
-    handle2: Option<Value>,
-    route_fn: Option<&'static Fn(RouteInfo) -> COMP::Msg>,
-    window: web::Window,
+pub struct RouterTask<CTX: 'static, COMP: Component<CTX>> {
+    handle1: web::EventListenerHandle,
+    handle2: Value,
     history: web::History,
+    route_fn: &'static Fn(RouteInfo) -> COMP::Msg,
+    window: web::Window,
 }
 
 /// State of the current route.
@@ -50,54 +49,27 @@ impl RouteInfo {
     }
 }
 
-impl<CTX: 'static, COMP: Component<CTX>> RouterService<CTX, COMP> {
-    /// Creates a new service instance connected to `App` by provided `sender`.
-    pub fn new() -> Self {
-        let window = web::window();
-        RouterService {
-            handle1: None,
-            handle2: None,
-            route_fn: None,
-            history: window.history(),
-            window: window,
-        }
-    }
-
-    pub fn create(
-        env: &mut Env<'static, CTX, COMP>,
+impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
+    /// Start the Routing Task in the environment.
+    ///
+    /// Ownership of this Task should typically be put in the `Model`.
+    ///
+    /// Routing will stop if this Task is dropped.
+    pub fn new(
+        env: &mut Env<'a, CTX, COMP>,
         route_fn: &'static Fn(RouteInfo) -> COMP::Msg,
     ) -> Self
     {
         let window = web::window();
         let callback = env.send_back(route_fn);
 
-        RouterService {
-            handle1: None,
-            handle2: None,
-            route_fn: Some(route_fn),
-            history: window.history(),
-            window: window,
-        }
-    }
-
-    /// Sets the router, which will continuously use the callback to route all relevant messages,
-    /// as well as when `set_state` is called.
-    ///
-    /// Typically this is called fron within the `impl Component::create for Model`.
-    ///
-    /// `env_callback` and `route_fn` must use the same function.
-    pub fn initialize(
-        &mut self,
-        callback: Callback<RouteInfo>,
-        route_fn: &'static Fn(RouteInfo) -> COMP::Msg,
-    ) {
         let callback1 = callback.clone();
         let callback2 = callback;
 
-        self.handle1 = Some(self.window
+        let handle1 = window
             .add_event_listener(move |event: web::event::PopStateEvent| {
                 callback1.emit(RouteInfo::new(event.state()));
-            }));
+            });
 
         // TODO: koute/stdweb/issues/171
         // self.handle2 = Some(self.window
@@ -109,20 +81,25 @@ impl<CTX: 'static, COMP: Component<CTX>> RouterService<CTX, COMP> {
             callback2.emit(RouteInfo::new(Value::Null));
         };
 
-        self.handle2 = Some(js!{
-            // FIXME: for some _bizare_ reason defining `action` is necessary here...
-            function action() { @{rs_handle()} };
-            window.addEventListener("load", action);
-            return action;
+        let handle2 = js!{
+            var callback = @{rs_handle};
+            function listener() {
+                callback();
+            }
+            window.addEventListener("load", listener);
+            return {
+                callback: callback,
+                listener: listener
+            };
+        };
 
-            // What I want to do is this:
-            // https://github.com/koute/stdweb/issues/171#issuecomment-379512282
-            // var handle = @{rs_handle};
-            // window.addEventListener("load", handle);
-            // return handle;
-        });
-
-        self.route_fn = Some(route_fn);
+        RouterTask {
+            handle1: handle1,
+            handle2: handle2,
+            route_fn: route_fn,
+            history: window.history(),
+            window: window,
+        }
     }
 
     /// Set the state of the history, including the url.
@@ -130,10 +107,6 @@ impl<CTX: 'static, COMP: Component<CTX>> RouterService<CTX, COMP> {
     /// This will _not_ trigger the router to change. If a state change is required
     /// it is the user's job to propogate the `Msg`.
     pub fn push_state(&self, state: Value, title: &str, url: Option<&str>) -> COMP::Msg {
-        let route_fn = match self.route_fn {
-            Some(r) => r,
-            None => panic!("Attempted to set_state without initializing router"),
-        };
         let url = match url {
             Some(url) => url.to_string(),
             None => self.window.location().unwrap().href().unwrap(),
@@ -143,38 +116,17 @@ impl<CTX: 'static, COMP: Component<CTX>> RouterService<CTX, COMP> {
             location: parse_location(&url),
             state: state,
         };
+        let route_fn = self.route_fn;
         route_fn(info)
     }
 }
 
-impl<CTX, COMP: Component<CTX>> Task for RouterService<CTX, COMP> {
-    fn is_active(&self) -> bool {
-        self.handle1.is_some()
-    }
-
-    fn cancel(&mut self) {
-        self.handle1
-            .take()
-            .expect("tried to cancel interval twice")
-            .remove();
-
-        // TODO: koute/stdweb/issues/171
-        // self.handle2
-        //     .take()
-        //     .expect("tried to cancel interval twice")
-        //     .remove();
-        js! { @(no_return)
-            let handle = @{self.handle2.take().unwrap()};
-            window.removeEventListener("load", handle);
-        };
-        self.route_fn.take();
-    }
-}
-
-impl<CTX, COMP: Component<CTX>> Drop for RouterService<CTX, COMP> {
+impl<CTX, COMP: Component<CTX>> Drop for RouterTask<CTX, COMP> {
     fn drop(&mut self) {
-        if self.is_active() {
-            self.cancel();
+        js! { @(no_return)
+            var handle = @{&self.handle2};
+            window.removeEventListener("load", handle.listener);
+            handle.callback.drop();
         }
     }
 }

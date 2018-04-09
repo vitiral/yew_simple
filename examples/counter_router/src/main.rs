@@ -6,17 +6,17 @@ extern crate yew_router;
 
 use yew::prelude::*;
 use yew::services::console::ConsoleService;
-use yew_router::{RouterService, RouteInfo};
+use yew_router::{RouterTask, RouteInfo};
 
 use stdweb::web::Date;
 
 struct Context {
     console: ConsoleService,
-    router: RouterService<Context, Model>,
 }
 
 struct Model {
     value: i64,
+    router: RouterTask<Context, Model>,
 }
 
 enum Msg {
@@ -31,11 +31,9 @@ impl Component<Context> for Model {
     type Properties = ();
 
     fn create(_: Self::Properties, context: &mut Env<Context, Self>) -> Self {
-        let callback = context.send_back(handle_route);
-        context.router.initialize(callback, &handle_route);
-
         Model {
             value: 0,
+            router: RouterTask::new(context, &handle_route),
         }
     }
 
@@ -100,7 +98,6 @@ fn main() {
     yew::initialize();
 
     let context = Context {
-        router: RouterService::new(),
         console: ConsoleService,
     };
 
