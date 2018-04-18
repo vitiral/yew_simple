@@ -5,5 +5,5 @@ authors = ["Garrett Berg <googberg@gmail.com>"]
 
 [dependencies]
 url = "1.7.0"
-yew = {version="0.3.*", git="https://github.com/DenisKolodin/yew"}
+yew = {path = "../yew" }
 stdweb = "0.4.2"
