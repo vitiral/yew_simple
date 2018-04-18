@@ -1,9 +1,9 @@
 [package]
-name = "yew_route"
+name = "yew_simple"
 version = "0.1.0"
 authors = ["Garrett Berg <googberg@gmail.com>"]
 
 [dependencies]
 url = "1.7.0"
-yew = {version="0.3.*", git="https://github.com/DenisKolodin/yew"}
+yew = "0.3.0"
 stdweb = "0.4.2"
