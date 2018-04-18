@@ -1,5 +1,5 @@
 [package]
-name = "yew_route"
+name = "yew_router"
 version = "0.1.0"
 authors = ["Garrett Berg <googberg@gmail.com>"]
 
