@@ -13,3 +13,4 @@ mod router;
 mod fetch;
 
 pub use router::{RouterTask, RouteInfo};
+pub use fetch::FetchTask;

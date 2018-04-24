@@ -11,13 +11,8 @@ use yew::services::Task;
 use yew::format::{Restorable, Storable};
 use yew::callback::Callback;
 
-pub use http::{HeaderMap, Method, Request, Response, StatusCode, Uri};
-
-/// Represents errors of a fetch service.
-#[derive(Debug)]
-enum FetchError {
-    FailedResponse(String),
-}
+use http::{HeaderMap, Method, StatusCode, Uri};
+use http;
 
 /// A handle to control sent requests. Can be canceled with a `Task::cancel` call.
 pub struct FetchTask(Option<Value>);
@@ -26,11 +21,7 @@ pub struct FetchTask(Option<Value>);
 #[derive(Default)]
 pub struct FetchService {}
 
-impl FetchService {
-    /// Creates a new service instance connected to `App` by provided `sender`.
-    pub fn new() -> Self {
-        Self {}
-    }
+impl FetchTask {
 
     /// Sends a request to a remote server given a Request object and a callback
     /// fuction to convert a Response object into a loop's message.
@@ -52,7 +43,7 @@ impl FetchService {
     /// response body and metadata.
     ///
     /// ```rust
-    ///     context.web.fetch(
+    ///     FetchTask::new(
     ///         post_request,
     ///         |response| {
     ///             if response.status().is_success() {
@@ -63,32 +54,13 @@ impl FetchService {
     ///         }
     ///     )
     /// ```
-    ///
-    /// One can also simply consume and pass the response or body object into
-    /// the message.
-    ///
-    /// ```rust
-    ///     context.web.fetch(
-    ///         get_request,
-    ///         |response| {
-    ///             let (meta, Json(body)) = response.into_parts();
-    ///             if meta.status.is_success() {
-    ///                 Msg::FetchResourceComplete(body)
-    ///             } else {
-    ///                 Msg::FetchResourceFailed
-    ///             }
-    ///         }
-    /// ```
-    ///
-
-    pub fn fetch(
-        &mut self,
-        request: Request<String>,
-        yew_callback: Callback<Response<String>>,
+    pub fn new(
+        request: http::Request<String>,
+        yew_callback: Callback<http::Response<String>>,
     ) -> FetchTask
     {
-        // Consume request as parts and body.
-        let (parts, body): (_, String) = request.into_parts();
+       // Consume request as parts and body.
+       let (parts, body): (_, String) = request.into_parts();
 
        // Map headers into a Js serializable HashMap.
        let header_map: HashMap<&str, &str> = parts
@@ -105,74 +77,73 @@ impl FetchService {
                )
            })
            .collect();
-        // Formats URI.
-        let uri = format!("{}", parts.uri);
+       // Formats URI.
+       let uri = format!("{}", parts.uri);
 
-        // Prepare the response callback.
-        // Notice that the callback signature must match the call from the javascript
-        // side. There is no static check at this point.
-        let js_callback = move |success: bool, response: Value, recv_body: String| -> () {
-            let mut response_builder = Response::builder();
+       // Prepare the response callback.
+       // Notice that the callback signature must match the call from the javascript
+       // side. There is no static check at this point.
+       let js_callback = move |success: bool, response: Value, recv_body: String| -> () {
+           let mut response_builder = http::Response::builder();
 
-            // Deserialize response status.
-            let status = u16::try_from(js!{
-                return @{&response}.status;
-            });
+           // Deserialize response status.
+           let status = u16::try_from(js!{
+               return @{&response}.status;
+           });
 
-            if let Ok(code) = status {
-                response_builder.status(code);
-            }
+           if let Ok(code) = status {
+               response_builder.status(code);
+           }
 
-            // Deserialize response headers.
-            let headers: HashMap<String, String> = HashMap::try_from(js!{
-                var map = {};
-                @{&response}.headers.forEach(function(value, key) {
-                    map[key] = value;
-                });
-                return map;
-            }).unwrap_or_default();
+           // Deserialize response headers.
+           let headers: HashMap<String, String> = HashMap::try_from(js!{
+               var map = {};
+               @{&response}.headers.forEach(function(value, key) {
+                   map[key] = value;
+               });
+               return map;
+           }).unwrap_or_default();
 
-            for (key, values) in &headers {
-                response_builder.header(key.as_str(), values.as_str());
-            }
+           for (key, values) in &headers {
+               response_builder.header(key.as_str(), values.as_str());
+           }
 
-            // Deserialize and wrap response body into a Restorable object.
-            let response = response_builder.body(recv_body).unwrap();
-            yew_callback.emit(response);
-        };
+           // Deserialize and wrap response body into a Restorable object.
+           let response = response_builder.body(recv_body).unwrap();
+           yew_callback.emit(response);
+       };
 
-
-        let handle = js! {
-            var data = {
-                // should this be to_string()?
-                method: @{parts.method.as_str()},
-                body: @{body},
-                headers: @{header_map},
-            };
-            var request = new Request(@{uri}, data);
-            var callback = @{js_callback};
-            var handle = {
-                active: true,
-                callback,
-            };
-            fetch(request).then(function(response) {
-                response.text().then(function(data) {
-                    if (handle.active == true) {
-                        handle.active = false;
-                        callback(true, response, data);
-                        callback.drop();
-                    }
-                }).catch(function(err) {
-                    if (handle.active == true) {
-                        handle.active = false;
-                        callback(false, response, data);
-                        callback.drop();
-                    }
-                });
-            });
-            return handle;
-        };
-        FetchTask(Some(handle))
+       let handle = js! {
+           var data = {
+               // should this be to_string()?
+               method: @{parts.method.as_str()},
+               body: @{body},
+               headers: @{header_map},
+           };
+           var request = new Request(@{uri}, data);
+           var callback = @{js_callback};
+           var handle = {
+               active: true,
+               callback: callback,
+           };
+           fetch(request).then(function(response) {
+               response.text().then(function(data) {
+                   if (handle.active == true) {
+                       handle.active = false;
+                       callback(true, response, data);
+                       callback.drop();
+                   }
+               }).catch(function(err) {
+                   if (handle.active == true) {
+                       handle.active = false;
+                       callback(false, response, data);
+                       callback.drop();
+                   }
+               });
+           });
+           return handle;
+       };
+       FetchTask(Some(handle))
     }
 }
 
