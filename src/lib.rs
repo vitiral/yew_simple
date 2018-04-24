@@ -3,10 +3,11 @@
 //! [`yew`]: https://github.com/DenisKolodin/yew
 #![recursion_limit="256"]
 
-extern crate yew;
+#[macro_use] extern crate expect_macro;
+pub extern crate http;
 #[macro_use] extern crate stdweb;
 pub extern crate url;
-pub extern crate http;
+extern crate yew;
 
 mod router;
 mod fetch;
