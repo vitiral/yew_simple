@@ -32,54 +32,54 @@ impl FetchService {
         Self {}
     }
 
-    // /// Sends a request to a remote server given a Request object and a callback
-    // /// fuction to convert a Response object into a loop's message.
-    // ///
-    // /// You may use a Request builder to build your request declaratively as on the
-    // /// following examples:
-    // ///
-    // /// ```rust
-    // ///    let post_request = Request::post("https://my.api/v1/resource")
-    // ///            .header("Content-Type", "application/json")
-    // ///            .body(Json(&json!({"foo": "bar"})))
-    // ///            .expect("Failed to build request.");
-    // ///
-    // ///    let get_request = Request::get("https://my.api/v1/resource")
-    // ///            .body(Nothing)
-    // ///            .expect("Failed to build request.");
-    // /// ```
-    // ///
-    // /// The callback function can build a loop message by passing or analizing the
-    // /// response body and metadata.
-    // ///
-    // /// ```rust
-    // ///     context.web.fetch(
-    // ///         post_request,
-    // ///         |response| {
-    // ///             if response.status().is_success() {
-    // ///                 Msg::Noop
-    // ///             } else {
-    // ///                 Msg::Error
-    // ///             }
-    // ///         }
-    // /// ```
-    // ///
-    // /// One can also simply consume and pass the response or body object into
-    // /// the message.
-    // ///
-    // /// ```rust
-    // ///     context.web.fetch(
-    // ///         get_request,
-    // ///         |response| {
-    // ///             let (meta, Json(body)) = response.into_parts();
-    // ///             if meta.status.is_success() {
-    // ///                 Msg::FetchResourceComplete(body)
-    // ///             } else {
-    // ///                 Msg::FetchResourceFailed
-    // ///             }
-    // ///         }
-    // /// ```
-    // ///
+    /// Sends a request to a remote server given a Request object and a callback
+    /// fuction to convert a Response object into a loop's message.
+    ///
+    /// You may use a Request builder to build your request declaratively as on the
+    /// following examples:
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    ///    let post_request = Request::post("https://my.api/v1/resource")
+    ///            .header("Content-Type", "application/json")
+    ///            .body("Some data".to_string())
+    ///            .expect("Failed to build request.");
+    /// ```
+    ///
+    /// The callback function can build a loop message by passing or analizing the
+    /// response body and metadata.
+    ///
+    /// ```rust
+    ///     context.web.fetch(
+    ///         post_request,
+    ///         |response| {
+    ///             if response.status().is_success() {
+    ///                 Msg::RecvData(response.into_body())
+    ///             } else {
+    ///                 Msg::Error
+    ///             }
+    ///         }
+    ///     )
+    /// ```
+    ///
+    /// One can also simply consume and pass the response or body object into
+    /// the message.
+    ///
+    /// ```rust
+    ///     context.web.fetch(
+    ///         get_request,
+    ///         |response| {
+    ///             let (meta, Json(body)) = response.into_parts();
+    ///             if meta.status.is_success() {
+    ///                 Msg::FetchResourceComplete(body)
+    ///             } else {
+    ///                 Msg::FetchResourceFailed
+    ///             }
+    ///         }
+    /// ```
+    ///
 
     pub fn fetch(
         &mut self,
@@ -144,8 +144,9 @@ impl FetchService {
 
         let handle = js! {
             var data = {
+                // should this be to_string()?
                 method: @{parts.method.as_str()},
-                body: @{body.into()},
+                body: @{body},
                 headers: @{header_map},
             };
             var request = new Request(@{uri}, data);
