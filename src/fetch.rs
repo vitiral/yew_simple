@@ -109,7 +109,7 @@ impl FetchTask {
            }
 
            // Deserialize and wrap response body into a Restorable object.
-           let response = response_builder.body(recv_body).unwrap();
+           let response = expect!(response_builder.body(recv_body));
            yew_callback.emit(response);
        };
 
