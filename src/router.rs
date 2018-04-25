@@ -12,6 +12,7 @@ pub struct RouterTask<CTX: 'static, COMP: Component<CTX>> {
     handle2: Value,
     history: web::History,
     route_fn: &'static Fn(RouteInfo) -> COMP::Msg,
+    window: web::Window,
 }
 
 /// State of the current route.
@@ -35,8 +36,9 @@ impl RouteInfo {
 
 fn current_url(window: &web::Window) -> Url {
     // TODO: better error messages around unwraps
-    let href = window.location().unwrap().href().unwrap();
-    Url::parse(&href).unwrap()
+    let location = expect!(window.location(), "could not get location");
+    let href = expect!(location.href(), "could not get href");
+    expect!(Url::parse(&href), "location.href did not parse")
 }
 
 impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
@@ -90,7 +92,13 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
             handle2: handle2,
             route_fn: route_fn,
             history: window.history(),
+            window: window,
         }
+    }
+
+    /// Retrieve the current url of the application.
+    pub fn current_url(&self) -> Url {
+        current_url(&self.window)
     }
 
     /// Set the state of the history, including the url.
@@ -104,6 +112,13 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
             state: state,
         };
         (*self.route_fn)(info)
+    }
+
+    /// Push a hash based on the current url.
+    pub fn push_hash(&self, hash: Option<&str>) -> COMP::Msg {
+        let mut url = current_url(&self.window);
+        url.set_fragment(hash);
+        self.push_state(Value::Null, "", url)
     }
 }
 
