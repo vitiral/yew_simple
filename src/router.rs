@@ -11,7 +11,7 @@ pub struct RouterTask<CTX: 'static, COMP: Component<CTX>> {
     _handle1: web::EventListenerHandle,
     handle2: Value,
     history: web::History,
-    route_fn: &'static Fn(RouteInfo) -> COMP::Msg,
+    route_fn: &'static Fn(RouteInfo) -> COMP::Message,
     window: web::Window,
 }
 
@@ -49,7 +49,7 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
     /// Routing will stop if this Task is dropped.
     pub fn new(
         env: &mut Env<'a, CTX, COMP>,
-        route_fn: &'static Fn(RouteInfo) -> COMP::Msg,
+        route_fn: &'static Fn(RouteInfo) -> COMP::Message,
     ) -> Self
     {
         let window = web::window();
@@ -104,8 +104,8 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
     /// Set the state of the history, including the url.
     ///
     /// This will _not_ trigger the router to change. If a state change is required
-    /// it is the user's job to propogate the `Msg`.
-    pub fn push_state(&self, state: Value, title: &str, url: Url) -> COMP::Msg {
+    /// it is the user's job to propogate the `Message`.
+    pub fn push_state(&self, state: Value, title: &str, url: Url) -> COMP::Message {
         self.history.push_state(state.clone(), title, Some(url.as_str()));
         let info = RouteInfo {
             url: url,
@@ -115,7 +115,7 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
     }
 
     /// Push a hash based on the current url.
-    pub fn push_hash(&self, hash: Option<&str>) -> COMP::Msg {
+    pub fn push_hash(&self, hash: Option<&str>) -> COMP::Message {
         let mut url = current_url(&self.window);
         url.set_fragment(hash);
         self.push_state(Value::Null, "", url)

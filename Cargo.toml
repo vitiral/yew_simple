@@ -1,6 +1,6 @@
 [package]
 name = "yew_simple"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Garrett Berg <googberg@gmail.com>"]
 description = "Simple task/services for yew. Includes router and http fetching."
 documentation = "https://docs.rs/yew_simple"
@@ -11,7 +11,7 @@ repository = "https://github.com/vitiral/yew_simple"
 
 [dependencies]
 url = "1.7.0"
-yew = "0.3.0"
-stdweb = "0.4.2"
-http = "0.1"
+yew = "0.4.0"
+stdweb = "0.4.6"
+http = "0.1.6"
 expect_macro = "0.2.1"

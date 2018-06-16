@@ -8,7 +8,6 @@ use stdweb::Value;
 use stdweb::unstable::{TryFrom, TryInto};
 
 use yew::services::Task;
-use yew::format::{Restorable, Storable};
 use yew::callback::Callback;
 
 use http::{HeaderMap, Method, StatusCode, Uri};
