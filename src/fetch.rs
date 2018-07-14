@@ -54,12 +54,12 @@ impl FetchTask {
     ///     )
     /// ```
     pub fn new(
-        request: http::Request<String>,
+        request: http::Request<Value>,
         yew_callback: Callback<http::Response<String>>,
     ) -> FetchTask
     {
        // Consume request as parts and body.
-       let (parts, body): (_, String) = request.into_parts();
+       let (parts, body): (_, Value) = request.into_parts();
 
        // Map headers into a Js serializable HashMap.
        let header_map: HashMap<&str, &str> = parts

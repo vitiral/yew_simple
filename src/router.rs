@@ -9,7 +9,7 @@ use stdweb::web::{self, IEventTarget};
 /// A handle which helps to cancel the router. Uses removeEventListener
 pub struct RouterTask<CTX: 'static, COMP: Component<CTX>> {
     _handle1: web::EventListenerHandle,
-    handle2: web::EventListenerHandle,
+    handle2: Value,
     history: web::History,
     route_fn: &'static Fn(RouteInfo) -> COMP::Message,
     window: web::Window,
@@ -64,11 +64,28 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
                 callback1.emit(RouteInfo::new(current_url(&cl_window), event.state()));
             });
 
+        // TODO: koute/stdweb/issues/171
+        // self.handle2 = Some(self.window
+        //     .add_event_listener(move |_event: web::event::ResourceLoadEvent| {
+        //         callback2.emit(RouteInfo::new(Value::Null));
+        //     }));
+
         let cl_window = window.clone();
-        let handle2 = window
-            .add_event_listener(move |event: web::event::ResourceLoadEvent| {
-                callback2.emit(RouteInfo::new(current_url(&cl_window), Value::Null));
-            });
+        let rs_handle = move || {
+            callback2.emit(RouteInfo::new(current_url(&cl_window), Value::Null));
+        };
+
+        let handle2 = js!{
+            var callback = @{rs_handle};
+            function listener() {
+                callback();
+            }
+            window.addEventListener("load", listener);
+            return {
+                callback: callback,
+                listener: listener
+            };
+        };
 
         RouterTask {
             _handle1: handle1,
@@ -104,3 +121,14 @@ impl<'a, CTX: 'a, COMP: Component<CTX>> RouterTask<CTX, COMP> {
         self.push_state(Value::Null, "", url)
     }
 }
+
+impl<CTX, COMP: Component<CTX>> Drop for RouterTask<CTX, COMP> {
+    fn drop(&mut self) {
+        js! { @(no_return)
+            var handle = @{&self.handle2};
+            window.removeEventListener("load", handle.listener);
+            handle.callback.drop();
+        }
+    }
+}
+
