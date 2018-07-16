@@ -32,26 +32,24 @@ impl FetchTask {
     /// # Examples
     ///
     /// ```rust
-    ///    let post_request = Request::post("https://my.api/v1/resource")
-    ///            .header("Content-Type", "application/json")
-    ///            .body("Some data".to_string())
-    ///            .expect("Failed to build request.");
+    /// # extern crate http;
+    /// use http::Request;
+    /// # fn main() {
+    /// let post_request = Request::post("https://my.api/v1/resource")
+    ///     .header("Content-Type", "application/json")
+    ///     .body("Some data".to_string())
+    ///     .expect("Failed to build request.");
+    /// # }
     /// ```
     ///
-    /// The callback function can build a loop message by passing or analizing the
-    /// response body and metadata.
+    /// You then attach the callback to the context using `context.send_back`.
     ///
-    /// ```rust
-    ///     FetchTask::new(
-    ///         post_request,
-    ///         |response| {
-    ///             if response.status().is_success() {
-    ///                 Msg::RecvData(response.into_body())
-    ///             } else {
-    ///                 Msg::Error
-    ///             }
-    ///         }
-    ///     )
+    /// ```rust,ignore
+    /// fn handle_response_initial(response: http::Response<String>) -> Msg {
+    ///    // Your code here.
+    /// }
+    ///
+    /// let callback = context.send_back(handle_response_initial);
     /// ```
     pub fn new(
         request: http::Request<Value>,
